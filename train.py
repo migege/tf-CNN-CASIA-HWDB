@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-16 00:31:23
+# Last Modified: 2017-11-17 09:49:11
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -12,14 +12,63 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from six.moves import xrange
-
-import struct
 from PIL import Image
+from struct import pack, unpack
+import numpy as np
+import os
+import tensorflow as tf
 
 import sample_data
+import model
 
-trn_gnt_dir = "/home/aib/datasets/HWDB1.1trn_gnt/"
-tst_gnt_dir = "/home/aib/datasets/HWDB1.1tst_gnt/"
+trn_gnt_bin = "/home/aib/datasets/HWDB1.1trn_gnt.bin"
+tst_gnt_bin = "/home/aib/datasets/HWDB1.1tst_gnt.bin"
+model_path = "/home/aib/models/tf-CNN-CASIA-HWDB/model.ckpt"
 
-trn_x, trn_y = sample_data.read_data_sets(trn_gnt_dir)
-print(len(trn_x), len(trn_y))
+char_set = "的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感"
+tag_in = map(lambda x: unpack('<H', x.encode('gb2312'))[0], char_set)
+assert len(char_set) == len(tag_in)
+
+learning_rate = 1e-3
+epochs = 100
+batch_size = 500
+batch_size_test = 10000
+step_display = 10
+step_save = 200
+p_keep_prob = 0.8
+normalize_image = False
+one_hot = True
+# n_classes = 3755
+n_classes = len(tag_in)
+
+x = tf.placeholder(tf.float32, [None, 4096])
+y = tf.placeholder(tf.float32, [None, n_classes])
+keep_prob = tf.placeholder(tf.float32)
+
+pred = model.CNN(x, n_classes, keep_prob)
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+
+correct = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+
+saver = tf.train.Saver()
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+
+    i = 0
+    for epoch in xrange(epochs):
+        for batch_x, batch_y in sample_data.read_data_sets(trn_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+            sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
+            i += 1
+            if i % step_display == 0:
+                loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+                print("iters:%s\tloss:%s\taccuracy:%s" % (i * batch_size, "{:.6f}".format(loss), "{:.5f}".format(acc)))
+            if i % step_save == 0:
+                saver.save(sess, model_path)
+    print("training done.")
+    saver.save(sess, model_path)
+
+    for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_dir, batch_size=batch_size_test, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+        acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+        print("test accuracy:{:.5f}".format(acc))
