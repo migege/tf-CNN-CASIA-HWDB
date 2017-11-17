@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-17 15:07:22
+# Last Modified: 2017-11-17 18:49:58
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -35,8 +35,8 @@ batch_size = 500
 batch_size_test = 5000
 step_display = 10
 step_save = 100
-p_keep_prob = 0.8
-normalize_image = False
+p_keep_prob = 0.5
+normalize_image = True
 one_hot = True
 # n_classes = 3755
 n_classes = len(tag_in)
