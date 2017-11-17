@@ -1,3 +1,3 @@
 # tf-CNN-CASIA-HWDB
 
-## TODO
+A tensorflow implementation of recognition of handwritten Chinese characters.
