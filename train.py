@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-17 09:49:11
+# Last Modified: 2017-11-17 15:07:22
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -32,9 +32,9 @@ assert len(char_set) == len(tag_in)
 learning_rate = 1e-3
 epochs = 100
 batch_size = 500
-batch_size_test = 10000
+batch_size_test = 5000
 step_display = 10
-step_save = 200
+step_save = 100
 p_keep_prob = 0.8
 normalize_image = False
 one_hot = True
@@ -56,19 +56,23 @@ saver = tf.train.Saver()
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
-    i = 0
-    for epoch in xrange(epochs):
-        for batch_x, batch_y in sample_data.read_data_sets(trn_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
-            sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
-            i += 1
-            if i % step_display == 0:
-                loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
-                print("iters:%s\tloss:%s\taccuracy:%s" % (i * batch_size, "{:.6f}".format(loss), "{:.5f}".format(acc)))
-            if i % step_save == 0:
-                saver.save(sess, model_path)
-    print("training done.")
-    saver.save(sess, model_path)
+    if True:
+        i = 0
+        for epoch in xrange(epochs):
+            for batch_x, batch_y in sample_data.read_data_sets(trn_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+                sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
+                i += 1
+                if i % step_display == 0:
+                    loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+                    print("iters:%s\tloss:%s\taccuracy:%s" % (i * batch_size, "{:.6f}".format(loss), "{:.5f}".format(acc)))
+                if i % step_save == 0:
+                    saver.save(sess, model_path)
+        print("training done.")
+        saver.save(sess, model_path)
+    else:
+        saver.restore(sess, model_path)
+        print("model restored.")
 
-    for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_dir, batch_size=batch_size_test, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
-        acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+    for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+        loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
         print("test accuracy:{:.5f}".format(acc))
