@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-17 18:49:58
+# Last Modified: 2017-11-17 23:04:46
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -30,7 +30,7 @@ tag_in = map(lambda x: unpack('<H', x.encode('gb2312'))[0], char_set)
 assert len(char_set) == len(tag_in)
 
 learning_rate = 1e-3
-epochs = 100
+epochs = 50
 batch_size = 500
 batch_size_test = 5000
 step_display = 10
@@ -52,15 +52,22 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 correct = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
 
+tf.summary.scalar("loss", cost)
+tf.summary.scalar("accuracy", accuracy)
+merged_summary_op = tf.summary.merge_all()
+
 saver = tf.train.Saver()
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
+
+    summary_writer = tf.summary.FileWriter("./log", graph=tf.get_default_graph())
 
     if True:
         i = 0
         for epoch in xrange(epochs):
             for batch_x, batch_y in sample_data.read_data_sets(trn_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
-                sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
+                _, summary = sess.run([optimizer, merged_summary_op], feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
+                summary_writer.add_summary(summary, i)
                 i += 1
                 if i % step_display == 0:
                     loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})

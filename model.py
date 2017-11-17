@@ -4,7 +4,7 @@
 #      Filename: model.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-16 11:58:28
-# Last Modified: 2017-11-17 18:06:22
+# Last Modified: 2017-11-17 22:51:32
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -36,20 +36,6 @@ def maxpool2d(name, x, k=2):
 
 def norm(name, l_input, lsize=4):
     return tf.nn.lrn(l_input, lsize, bias=1.0, alpha=0.001 / 90, beta=0.75, name=name)
-
-
-def DNN(x, n_classes, keep_prob):
-    # W_h1 = weights_variable([4096, 2048])
-    # W_h2 = weights_variable([2048, 256])
-    W_h1 = weights_variable([4096, 256])
-    W_o = weights_variable([256, n_classes])
-
-    x = tf.nn.dropout(x, 0.8)
-    h1 = tf.nn.dropout(tf.nn.relu(tf.matmul(x, W_h1)), keep_prob)
-    # h2 = tf.nn.dropout(tf.nn.relu(tf.matmul(h1, W_h2)), keep_prob)
-    # y = tf.matmul(h2, W_o)
-    y = tf.matmul(h1, W_o)
-    return y
 
 
 def CNN(x, n_classes, keep_prob):
