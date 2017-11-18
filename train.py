@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-17 23:04:46
+# Last Modified: 2017-11-18 09:30:20
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -30,7 +30,7 @@ tag_in = map(lambda x: unpack('<H', x.encode('gb2312'))[0], char_set)
 assert len(char_set) == len(tag_in)
 
 learning_rate = 1e-3
-epochs = 50
+epochs = 70
 batch_size = 500
 batch_size_test = 5000
 step_display = 10
