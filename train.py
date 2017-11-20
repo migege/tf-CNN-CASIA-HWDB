@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-18 09:30:20
+# Last Modified: 2017-11-18 20:09:46
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -29,6 +29,9 @@ char_set = "的一是了我不人在他有这个上们来到时大地为子中�
 tag_in = map(lambda x: unpack('<H', x.encode('gb2312'))[0], char_set)
 assert len(char_set) == len(tag_in)
 
+# no filters
+# tag_in = []
+
 learning_rate = 1e-3
 epochs = 70
 batch_size = 500
@@ -38,11 +41,14 @@ step_save = 100
 p_keep_prob = 0.5
 normalize_image = True
 one_hot = True
-# n_classes = 3755
-n_classes = len(tag_in)
+
+if not tag_in:
+    n_classes = 3755
+else:
+    n_classes = len(tag_in)
 
 x = tf.placeholder(tf.float32, [None, 4096])
-y = tf.placeholder(tf.float32, [None, n_classes])
+y = tf.placeholder(tf.int32, [None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
 
 pred = model.CNN(x, n_classes, keep_prob)
@@ -71,7 +77,7 @@ with tf.Session() as sess:
                 i += 1
                 if i % step_display == 0:
                     loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
-                    print("iters:%s\tloss:%s\taccuracy:%s" % (i * batch_size, "{:.6f}".format(loss), "{:.5f}".format(acc)))
+                    print("batch:%s\tloss:%s\taccuracy:%s" % (i, "{:.6f}".format(loss), "{:.5f}".format(acc)))
                 if i % step_save == 0:
                     saver.save(sess, model_path)
         print("training done.")
@@ -82,4 +88,4 @@ with tf.Session() as sess:
 
     for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
         loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
-        print("test accuracy:{:.5f}".format(acc))
+        print("TestLoss:{:.6f}\tTestAccuracy:{:.5f}\tTopKAccuracy:{:.5f}".format(loss, acc))

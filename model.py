@@ -4,7 +4,7 @@
 #      Filename: model.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-16 11:58:28
-# Last Modified: 2017-11-17 22:51:32
+# Last Modified: 2017-11-20 10:00:37
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -51,10 +51,14 @@ def CNN(x, n_classes, keep_prob):
     c2 = conv2d('c2', p1, W_c2, b_c2)
     p2 = maxpool2d('p2', c2)
 
+    W_c3 = weights_variable([3, 3, 64, 64])
+    b_c3 = biases_variable([64])
+    c3 = conv2d('c3', p2, W_c3, b_c3)
+
     W_fc1 = weights_variable([16 * 16 * 64, 1024])
     b_fc1 = biases_variable([1024])
-    flat_p2 = tf.reshape(p2, [-1, 16 * 16 * 64])
-    fc1 = tf.nn.relu(tf.matmul(flat_p2, W_fc1) + b_fc1)
+    flat = tf.reshape(c3, [-1, 16 * 16 * 64])
+    fc1 = tf.nn.relu(tf.matmul(flat, W_fc1) + b_fc1)
     fc1 = tf.nn.dropout(fc1, keep_prob)
 
     W_fc2 = weights_variable([1024, n_classes])
