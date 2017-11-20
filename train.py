@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-18 20:09:46
+# Last Modified: 2017-11-20 15:15:08
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -33,7 +33,7 @@ assert len(char_set) == len(tag_in)
 # tag_in = []
 
 learning_rate = 1e-3
-epochs = 70
+epochs = 40
 batch_size = 500
 batch_size_test = 5000
 step_display = 10
@@ -57,6 +57,9 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 correct = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+
+cr5 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(pred, tf.argmax(y, 1), 5), tf.float32))
+cr10 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(pred, tf.argmax(y, 1), 10), tf.float32))
 
 tf.summary.scalar("loss", cost)
 tf.summary.scalar("accuracy", accuracy)
@@ -86,6 +89,16 @@ with tf.Session() as sess:
         saver.restore(sess, model_path)
         print("model restored.")
 
+    i = 0
+    sum_cr1 = 0.
+    sum_cr5 = 0.
+    sum_cr10 = 0.
     for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
-        loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
-        print("TestLoss:{:.6f}\tTestAccuracy:{:.5f}\tTopKAccuracy:{:.5f}".format(loss, acc))
+        loss, acc, _cr5, _cr10 = sess.run([cost, accuracy, cr5, cr10], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+        print("Loss:{:.6f}\tCR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(loss, acc, _cr5, _cr10))
+        sum_cr1 += acc
+        sum_cr5 += _cr5
+        sum_cr10 += _cr10
+        i += 1
+    print("============================================================")
+    print("CR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(sum_cr1 / i, sum_cr5 / i, sum_cr10 / i))
