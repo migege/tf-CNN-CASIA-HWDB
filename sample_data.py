@@ -4,7 +4,7 @@
 #      Filename: sample_data.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 22:53:41
-# Last Modified: 2017-11-17 09:49:07
+# Last Modified: 2017-11-21 22:42:17
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -78,19 +78,21 @@ def normalize_img(img):
     return img
 
 
+def get_all_tagcodes(gnt_bin):
+    with open(gnt_bin, 'rb') as f:
+        tagcode_all = []
+        while True:
+            buf = np.fromfile(f, np.uint8, 4098)
+            if not buf.size:
+                break
+            tagcode = np.frombuffer(buf, np.dtype('<u2'), 1)[0]
+            if tagcode not in tagcode_all:
+                tagcode_all.append(tagcode)
+        return tagcode_all
+
+
 def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_hot=True):
     with open(gnt_bin, 'rb') as f:
-        if not tag_in:
-            tagcode_all = []
-            while True:
-                buf = np.fromfile(f, np.uint8, 4098)
-                if not buf.size:
-                    break
-                tagcode = np.frombuffer(buf, np.dtype('<u2'), 1)[0]
-                if tagcode not in tagcode_all:
-                    tagcode_all.append(tagcode)
-
-        f.seek(0, os.SEEK_SET)
         x = []
         y = []
         while True:
@@ -99,19 +101,12 @@ def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_
                 break
 
             tagcode = np.frombuffer(buf, np.dtype('<u2'), 1)[0]
-            if not tag_in:
-                if tagcode not in tagcode_all:
-                    continue
-            elif tagcode not in tag_in:
+            if tagcode not in tag_in:
                 continue
 
             if one_hot:
-                if not tag_in:
-                    label = np.zeros(len(tagcode_all))
-                    label[tagcode_all.index(tagcode)] = 1
-                else:
-                    label = np.zeros(len(tag_in))
-                    label[tag_in.index(tagcode)] = 1
+                label = np.zeros(len(tag_in))
+                label[tag_in.index(tagcode)] = 1
             else:
                 label = tagcode
 

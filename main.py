@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-21 11:01:58
+# Last Modified: 2017-11-21 22:44:38
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -40,23 +40,25 @@ one_hot = True
 
 
 def main(_):
+    FN_model = None
+
     if FLAGS.charset == 0:
         char_set = "的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感"
         tag_in = map(lambda x: unpack('<H', x.encode('gb2312'))[0], char_set)
         assert len(char_set) == len(tag_in)
+        n_classes = len(char_set)
+        FN_model = model.CNN
     elif FLAGS.charset == 1:
-        tag_in = []
-
-    if not tag_in:
-        n_classes = 3755
-    else:
+        tag_in = sample_data.get_all_tagcodes(trn_gnt_bin)
+        assert len(tag_in) == 3755
         n_classes = len(tag_in)
+        FN_model = model.cnn_for_medium_charset
 
     x = tf.placeholder(tf.float32, [None, 4096])
     y = tf.placeholder(tf.int32, [None, n_classes])
     keep_prob = tf.placeholder(tf.float32)
 
-    pred = model.CNN(x, n_classes, keep_prob)
+    pred = FN_model(x, n_classes, keep_prob)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
