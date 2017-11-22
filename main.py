@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-21 22:44:38
+# Last Modified: 2017-11-22 18:02:44
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -68,6 +68,8 @@ def main(_):
     cr5 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(pred, tf.argmax(y, 1), 5), tf.float32))
     cr10 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(pred, tf.argmax(y, 1), 10), tf.float32))
 
+    top5 = tf.nn.top_k(tf.nn.softmax(pred), k=5)
+
     tf.summary.scalar("loss", cost)
     tf.summary.scalar("accuracy", accuracy)
     merged_summary_op = tf.summary.merge_all()
@@ -96,24 +98,46 @@ def main(_):
             saver.restore(sess, model_path)
             print("model restored.")
 
-        i = 0
-        sum_cr1 = 0.
-        sum_cr5 = 0.
-        sum_cr10 = 0.
-        for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
-            loss, acc, _cr5, _cr10 = sess.run([cost, accuracy, cr5, cr10], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
-            print("Loss:{:.6f}\tCR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(loss, acc, _cr5, _cr10))
-            sum_cr1 += acc
-            sum_cr5 += _cr5
-            sum_cr10 += _cr10
-            i += 1
-        print("============================================================")
-        print("CR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(sum_cr1 / i, sum_cr5 / i, sum_cr10 / i))
+        if FLAGS.action == 'test':
+            i = 0
+            sum_cr1 = 0.
+            sum_cr5 = 0.
+            sum_cr10 = 0.
+            for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+                loss, acc, _cr5, _cr10 = sess.run([cost, accuracy, cr5, cr10], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
+                print("Loss:{:.6f}\tCR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(loss, acc, _cr5, _cr10))
+                sum_cr1 += acc
+                sum_cr5 += _cr5
+                sum_cr10 += _cr10
+                i += 1
+            print("============================================================")
+            print("CR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(sum_cr1 / i, sum_cr5 / i, sum_cr10 / i))
+        elif FLAGS.action == 'inference':
+            imgs = FLAGS.img.split(';')
+            if not imgs:
+                raise Exception('--img is invalid')
+            for imgf in imgs:
+                if not os.path.isfile(imgf):
+                    print("file:%s invalid" % imgf)
+                    continue
+                with Image.open(imgf).convert('L') as img_obj:
+                    shape = (img_obj.size[1], img_obj.size[0])
+                    img = np.reshape(bytearray(img_obj.tobytes()), shape)
+                    img = sample_data.resize_image(img)
+                    Image.fromarray(np.reshape(img, (64, 64))).convert('RGB').save('./hehe.png')
+
+                    if normalize_image:
+                        img = sample_data.normalize_img(img)
+                    vals, indices = sess.run(top5, feed_dict={x: [img], keep_prob: 1.})
+                    print("============================================================")
+                    for i, index in enumerate(indices[0]):
+                        print("%s : %s" % (pack('<H', tag_in[index]).decode('gb2312'), vals[0][i]))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', type=str, help='[train|inference]')
+    parser.add_argument('action', type=str, help='[train|test|inference]')
     parser.add_argument('charset', type=int, help='0:only mostly used 140 characters; 1:3755 characters in GB2312')
+    parser.add_argument('--img', type=str, help='the image path, required when action=inference')
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

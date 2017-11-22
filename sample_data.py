@@ -4,7 +4,7 @@
 #      Filename: sample_data.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 22:53:41
-# Last Modified: 2017-11-21 22:42:17
+# Last Modified: 2017-11-22 15:53:44
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -112,7 +112,7 @@ def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_
 
             image = np.frombuffer(buf, np.uint8, 4096)
             if normalize_image:
-                image = (image - 128) / 128
+                image = normalize_img(image)
             x.append(image)
             y.append(label)
             assert len(x) == len(y)
