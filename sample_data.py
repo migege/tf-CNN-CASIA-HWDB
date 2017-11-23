@@ -4,7 +4,7 @@
 #      Filename: sample_data.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 22:53:41
-# Last Modified: 2017-11-22 15:53:44
+# Last Modified: 2017-11-23 15:43:30
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -14,6 +14,39 @@ from __future__ import unicode_literals
 import os
 import numpy as np
 from sklearn.utils import shuffle
+
+
+def read_from_pot_dir(pot_dir):
+
+    def one_file(f):
+        header_size = 8
+        while True:
+            _sample_size = np.fromfile(f, np.dtype('<u2'), 1)
+            if not _sample_size:
+                break
+            sample_size = _sample_size[0]
+            tagcode = np.fromfile(f, np.dtype('<u4'), 1)[0]
+            stroke_num = np.fromfile(f, np.dtype('<u2'), 1)[0]
+            strokes = []
+            one_stroke = []
+            while True:
+                x = np.fromfile(f, np.dtype('<i2'), 1)[0]
+                y = np.fromfile(f, np.dtype('<i2'), 1)[0]
+                if x == -1 and y == 0:
+                    strokes.append(one_stroke)
+                    one_stroke = []
+                    continue
+                if x == -1 and y == -1:
+                    yield tagcode, strokes
+                    break
+                one_stroke.append((x, y))
+
+    for fn in os.listdir(pot_dir):
+        if fn.endswith('.pot'):
+            fn = os.path.join(pot_dir, fn)
+            with open(fn, 'rb') as f:
+                for tagcode, strokes in one_file(f):
+                    yield tagcode, strokes
 
 
 def read_from_gnt_dir(gnt_dir):
