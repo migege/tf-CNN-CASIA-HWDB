@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-23 11:22:23
+# Last Modified: 2017-11-23 17:58:09
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -124,7 +124,6 @@ def main(_):
                     shape = (img_obj.size[1], img_obj.size[0])
                     img = np.reshape(bytearray(img_obj.tobytes()), shape)
                     img = sample_data.resize_image(img)
-                    # Image.fromarray(np.reshape(img, (64, 64))).convert('RGB').save('./hehe.png')
 
                     if normalize_image:
                         img = sample_data.normalize_img(img)
