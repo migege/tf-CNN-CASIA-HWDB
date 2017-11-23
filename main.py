@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-22 18:02:44
+# Last Modified: 2017-11-22 18:26:34
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -31,7 +31,7 @@ model_path = "/home/aib/models/tf-CNN-CASIA-HWDB/model.ckpt"
 learning_rate = 1e-3
 epochs = 40
 batch_size = 500
-batch_size_test = 5000
+batch_size_test = 2000
 step_display = 10
 step_save = 100
 p_keep_prob = 0.5
@@ -103,7 +103,7 @@ def main(_):
             sum_cr1 = 0.
             sum_cr5 = 0.
             sum_cr10 = 0.
-            for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+            for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size_test, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
                 loss, acc, _cr5, _cr10 = sess.run([cost, accuracy, cr5, cr10], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
                 print("Loss:{:.6f}\tCR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(loss, acc, _cr5, _cr10))
                 sum_cr1 += acc
