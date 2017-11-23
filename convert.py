@@ -4,7 +4,7 @@
 #      Filename: convert.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-16 10:34:55
-# Last Modified: 2017-11-23 16:56:16
+# Last Modified: 2017-11-23 17:05:30
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -35,10 +35,13 @@ def convert_gnt(gnt_dir, fn_dst):
 
 
 def extract_pot(pot_dir, png_dir):
+    files = []
     all_tagcode = defaultdict(int)
     for tagcode, strokes in sample_data.read_from_pot_dir(pot_dir):
         all_tagcode[tagcode] += 1
-        pngf = os.path.join(png_dir, "%05d_%s.png" % (tagcode, all_tagcode[tagcode]))
+        fn = "%05d_%s.png" % (tagcode, all_tagcode[tagcode])
+        files.append(fn)
+        pngf = os.path.join(png_dir, fn)
         im = Image.new("L", (10240, 10240), 255)
         draw = ImageDraw.Draw(im)
         mins = []
@@ -59,6 +62,10 @@ def extract_pot(pot_dir, png_dir):
         for char in chars:
             f.write(char.encode('utf8'))
         f.write("\n")
+
+    with open(os.path.join(png_dir, "files"), "w") as f:
+        for fn in files:
+            f.write(fn + "\n")
 
 
 # convert_gnt(trn_gnt_dir, "/home/aib/datasets/HWDB1.1trn_gnt.bin")
