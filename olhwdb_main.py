@@ -4,7 +4,7 @@
 #      Filename: olhwdb.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-24 16:14:52
-# Last Modified: 2017-11-25 23:18:24
+# Last Modified: 2017-11-25 23:25:06
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,6 @@ trn_charset = "/home/aib/datasets/OLHWDB1.1trn_pot.bin.charset"
 
 all_tagcodes = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
 num_classes = len(all_tagcodes)
-tagcodes_tensor = tf.constant(all_tagcodes)
 
 LABEL_BYTES = 2
 IMAGE_WIDTH = 64
@@ -35,7 +34,7 @@ RECORD_BYTES = LABEL_BYTES + IMAGE_BYTES
 def parse_record(raw_record):
     record_vector = tf.decode_raw(raw_record, out_type=tf.uint16, little_endian=False, name='decode_raw_16')
     label = tf.cast(record_vector[0], tf.int32)
-    label = tf.cast(tf.equal(label, tagcodes_tensor), tf.int32)
+    label = tf.cast(tf.equal(label, all_tagcodes), tf.int32)
     record_vector = tf.decode_raw(raw_record, out_type=tf.uint8, name='decode_raw_8')
     image = tf.cast(tf.transpose(tf.reshape(record_vector[LABEL_BYTES:RECORD_BYTES], [IMAGE_DEPTH, IMAGE_HEIGHT, IMAGE_WIDTH]), [1, 2, 0]), tf.float32)
     return image, label
@@ -102,7 +101,7 @@ def model_fn(features, labels, mode, params):
         'train_loss': 'train_loss',
         'train_accuracy': 'train_accuracy',
     }
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=20)
+    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=100)
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -124,7 +123,7 @@ def main(_):
     run_config = tf.estimator.RunConfig().replace(save_checkpoints_steps=1e4)
     classifier = tf.estimator.Estimator(
         model_fn=model_fn,
-        model_dir="/home/aib/models/olhwdb/",
+        model_dir="/home/aib/models/tf-CNN-CASIA-OLHWDB/",
         config=run_config,
         params={
             'learning_rate': learning_rate,
