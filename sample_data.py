@@ -4,7 +4,7 @@
 #      Filename: sample_data.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 22:53:41
-# Last Modified: 2017-11-23 15:43:30
+# Last Modified: 2017-11-24 09:38:31
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -13,7 +13,9 @@ from __future__ import unicode_literals
 
 import os
 import numpy as np
+import codecs
 from sklearn.utils import shuffle
+from struct import pack, unpack
 
 
 def read_from_pot_dir(pot_dir):
@@ -124,6 +126,15 @@ def get_all_tagcodes(gnt_bin):
         return tagcode_all
 
 
+def get_all_tagcodes_from_charset_file(fn):
+    with codecs.open(fn, 'r', encoding='utf8') as f:
+        tagcode_all = []
+        chars = f.read().strip()
+        for ch in chars:
+            tagcode_all.append(unpack('<H', ch.encode('gb2312'))[0])
+        return tagcode_all
+
+
 def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_hot=True):
     with open(gnt_bin, 'rb') as f:
         x = []
@@ -156,3 +167,7 @@ def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_
                 x = []
                 y = []
                 yield _x, _y
+
+
+if __name__ == '__main__':
+    print(get_all_tagcodes_from_charset_file("/home/aib/datasets/OLHWDB1.1trn_pot.bin.charset"))

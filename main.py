@@ -4,7 +4,7 @@
 #      Filename: train.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 23:51:22
-# Last Modified: 2017-11-23 17:58:09
+# Last Modified: 2017-11-24 18:50:09
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -24,16 +24,21 @@ import model
 
 FLAGS = None
 
-trn_gnt_bin = "/home/aib/datasets/HWDB1.1trn_gnt.bin"
-tst_gnt_bin = "/home/aib/datasets/HWDB1.1tst_gnt.bin"
+trn_bin = "/home/aib/datasets/HWDB1.1trn_gnt.bin"
+tst_bin = "/home/aib/datasets/HWDB1.1tst_gnt.bin"
 model_path = "/home/aib/models/tf-CNN-CASIA-HWDB/model.ckpt"
+
+trn_bin = "/home/aib/datasets/OLHWDB1.1trn_pot.bin"
+tst_bin = "/home/aib/datasets/OLHWDB1.1tst_pot.bin"
+model_path = "/home/aib/models/tf-CNN-CASIA-OLHWDB/model.ckpt"
+trn_charset = "/home/aib/datasets/OLHWDB1.1trn_pot.bin.charset"
 
 learning_rate = 1e-3
 epochs = 40
-batch_size = 500
-batch_size_test = 2000
+batch_size = 200
+batch_size_test = 1000
 step_display = 10
-step_save = 100
+step_save = 500
 p_keep_prob = 0.5
 normalize_image = True
 one_hot = True
@@ -49,7 +54,8 @@ def main(_):
         n_classes = len(char_set)
         FN_model = model.CNN
     elif FLAGS.charset == 1:
-        tag_in = sample_data.get_all_tagcodes(trn_gnt_bin)
+        # tag_in = sample_data.get_all_tagcodes(trn_gnt_bin)
+        tag_in = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
         assert len(tag_in) == 3755
         n_classes = len(tag_in)
         FN_model = model.cnn_for_medium_charset
@@ -83,7 +89,7 @@ def main(_):
         if FLAGS.action == 'train':
             i = 0
             for epoch in xrange(epochs):
-                for batch_x, batch_y in sample_data.read_data_sets(trn_gnt_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+                for batch_x, batch_y in sample_data.read_data_sets(trn_bin, batch_size=batch_size, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
                     _, summary = sess.run([optimizer, merged_summary_op], feed_dict={x: batch_x, y: batch_y, keep_prob: p_keep_prob})
                     summary_writer.add_summary(summary, i)
                     i += 1
@@ -103,7 +109,7 @@ def main(_):
             sum_cr1 = 0.
             sum_cr5 = 0.
             sum_cr10 = 0.
-            for batch_x, batch_y in sample_data.read_data_sets(tst_gnt_bin, batch_size=batch_size_test, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
+            for batch_x, batch_y in sample_data.read_data_sets(tst_bin, batch_size=batch_size_test, normalize_image=normalize_image, tag_in=tag_in, one_hot=one_hot):
                 loss, acc, _cr5, _cr10 = sess.run([cost, accuracy, cr5, cr10], feed_dict={x: batch_x, y: batch_y, keep_prob: 1.})
                 print("Loss:{:.6f}\tCR(1):{:.5f}\tCR(5):{:.5f}\tCR(10):{:.5f}".format(loss, acc, _cr5, _cr10))
                 sum_cr1 += acc
