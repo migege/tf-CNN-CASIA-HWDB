@@ -4,7 +4,7 @@
 #      Filename: olhwdb.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-24 16:14:52
-# Last Modified: 2017-11-25 23:25:06
+# Last Modified: 2017-11-25 23:53:55
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -46,7 +46,10 @@ def preprocess_image(image, is_training):
 
 
 def input_fn(is_training, batch_size, num_epochs=1):
-    filenames = [trn_bin]
+    if is_training:
+        filenames = [trn_bin]
+    else:
+        filenames = [tst_bin]
     dataset = tf.data.FixedLengthRecordDataset(filenames, record_bytes=RECORD_BYTES)
     dataset = dataset.shuffle(buffer_size=50000)
     dataset = dataset.map(parse_record)
@@ -114,9 +117,10 @@ def model_fn(features, labels, mode, params):
 
 
 def main(_):
-    num_epochs = 1
+    num_epochs = 5
     epochs_per_eval = 1
     batch_size = 500
+    batch_size_evaluate = 1000
     keep_prob = 0.5
     learning_rate = 1e-3
 
@@ -134,7 +138,7 @@ def main(_):
 
     for _ in range(num_epochs // epochs_per_eval):
         classifier.train(input_fn=lambda: input_fn(True, batch_size, num_epochs))
-        eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size))
+        eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
         print(eval_results)
 
 
