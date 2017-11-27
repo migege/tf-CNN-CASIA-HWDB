@@ -4,7 +4,7 @@
 #      Filename: olhwdb.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-24 16:14:52
-# Last Modified: 2017-11-25 23:53:55
+# Last Modified: 2017-11-27 16:35:45
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -13,8 +13,14 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 import struct
+import os, sys, argparse
 
 import sample_data
+
+flags = tf.app.flags
+flags.DEFINE_string("action", None, "[train|evaluate|predict]")
+flags.DEFINE_string("input", None, "input image path, required when --action=predict")
+FLAGS = flags.FLAGS
 
 trn_bin = "/home/aib/datasets/OLHWDB1.1trn_pot.bin"
 tst_bin = "/home/aib/datasets/OLHWDB1.1tst_pot.bin"
@@ -40,7 +46,7 @@ def parse_record(raw_record):
     return image, label
 
 
-def preprocess_image(image, is_training):
+def preprocess_image(image):
     image = tf.image.per_image_standardization(image)
     return image
 
@@ -53,13 +59,29 @@ def input_fn(is_training, batch_size, num_epochs=1):
     dataset = tf.data.FixedLengthRecordDataset(filenames, record_bytes=RECORD_BYTES)
     dataset = dataset.shuffle(buffer_size=50000)
     dataset = dataset.map(parse_record)
-    dataset = dataset.map(lambda image, label: (preprocess_image(image, is_training), label))
+    dataset = dataset.map(lambda image, label: (preprocess_image(image), label))
     dataset = dataset.prefetch(2 * batch_size)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
     iterator = dataset.make_one_shot_iterator()
     images, labels = iterator.get_next()
     return images, labels
+
+
+def parse_image(fn):
+    d = tf.image.decode_image(tf.read_file(fn), channels=1)
+    d.set_shape([None, None, 1])
+    d = tf.image.resize_images(d, [IMAGE_HEIGHT, IMAGE_WIDTH])
+    return d
+
+
+def predict_input_fn(filename):
+    dataset = tf.data.Dataset.from_tensor_slices([tf.constant(filename)])
+    dataset = dataset.map(parse_image)
+    dataset = dataset.map(preprocess_image)
+    iterator = dataset.make_one_shot_iterator()
+    images = iterator.get_next()
+    return images
 
 
 def CNN(inputs, mode):
@@ -117,6 +139,14 @@ def model_fn(features, labels, mode, params):
 
 
 def main(_):
+    if not FLAGS.action or FLAGS.action not in ["train", "evaluate", "predict"]:
+        print("--action must be specified.")
+        sys.exit(1)
+
+    if FLAGS.action == 'predict' and (not FLAGS.input or not os.path.isfile(FLAGS.input)):
+        print("--input must be specified.")
+        sys.exit(1)
+
     num_epochs = 5
     epochs_per_eval = 1
     batch_size = 500
@@ -136,10 +166,18 @@ def main(_):
         },
     )
 
-    for _ in range(num_epochs // epochs_per_eval):
-        classifier.train(input_fn=lambda: input_fn(True, batch_size, num_epochs))
+    if FLAGS.action == 'train':
+        for _ in range(num_epochs // epochs_per_eval):
+            classifier.train(input_fn=lambda: input_fn(True, batch_size, num_epochs))
+            eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
+            print(eval_results)
+    elif FLAGS.action == 'evaluate':
         eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
         print(eval_results)
+    elif FLAGS.action == 'predict':
+        for predict_results in classifier.predict(input_fn=lambda: predict_input_fn(FLAGS.input)):
+            idx = predict_results['classes']
+            print(struct.pack('<H', all_tagcodes[idx]).decode('gb2312'), predict_results['probabilities'][idx])
 
 
 if __name__ == '__main__':

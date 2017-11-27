@@ -1,3 +1,4 @@
 *.pyc
+*.log
 png/resize_*.png
 log/
