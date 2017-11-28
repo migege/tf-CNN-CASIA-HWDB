@@ -4,7 +4,7 @@
 #      Filename: olhwdb.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-24 16:14:52
-# Last Modified: 2017-11-27 16:35:45
+# Last Modified: 2017-11-28 18:51:19
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -18,15 +18,16 @@ import os, sys, argparse
 import sample_data
 
 flags = tf.app.flags
-flags.DEFINE_string("action", None, "[train|evaluate|predict]")
+flags.DEFINE_string("action", None, "[train|evaluate|predict|export]")
 flags.DEFINE_string("input", None, "input image path, required when --action=predict")
+flags.DEFINE_string("export_dir", None, "model export dir,required when --action=export")
 FLAGS = flags.FLAGS
 
 trn_bin = "/home/aib/datasets/OLHWDB1.1trn_pot.bin"
 tst_bin = "/home/aib/datasets/OLHWDB1.1tst_pot.bin"
 trn_charset = "/home/aib/datasets/OLHWDB1.1trn_pot.bin.charset"
 
-all_tagcodes = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
+all_tagcodes, all_chars = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
 num_classes = len(all_tagcodes)
 
 LABEL_BYTES = 2
@@ -35,6 +36,11 @@ IMAGE_HEIGHT = 64
 IMAGE_DEPTH = 1
 IMAGE_BYTES = IMAGE_WIDTH * IMAGE_HEIGHT * IMAGE_DEPTH
 RECORD_BYTES = LABEL_BYTES + IMAGE_BYTES
+
+
+def preprocess_image(image):
+    image = tf.image.per_image_standardization(image)
+    return image
 
 
 def parse_record(raw_record):
@@ -46,11 +52,6 @@ def parse_record(raw_record):
     return image, label
 
 
-def preprocess_image(image):
-    image = tf.image.per_image_standardization(image)
-    return image
-
-
 def input_fn(is_training, batch_size, num_epochs=1):
     if is_training:
         filenames = [trn_bin]
@@ -60,6 +61,7 @@ def input_fn(is_training, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=50000)
     dataset = dataset.map(parse_record)
     dataset = dataset.map(lambda image, label: (preprocess_image(image), label))
+    dataset = dataset.map(lambda image, label: {"image": image}, label)
     dataset = dataset.prefetch(2 * batch_size)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.batch(batch_size)
@@ -69,22 +71,24 @@ def input_fn(is_training, batch_size, num_epochs=1):
 
 
 def parse_image(fn):
-    d = tf.image.decode_image(tf.read_file(fn), channels=1)
-    d.set_shape([None, None, 1])
-    d = tf.image.resize_images(d, [IMAGE_HEIGHT, IMAGE_WIDTH])
-    return d
+    image = tf.image.decode_image(tf.read_file(fn), channels=1)
+    image.set_shape([None, None, 1])
+    image = tf.image.resize_images(image, [IMAGE_HEIGHT, IMAGE_WIDTH])
+    return image
 
 
 def predict_input_fn(filename):
     dataset = tf.data.Dataset.from_tensor_slices([tf.constant(filename)])
     dataset = dataset.map(parse_image)
     dataset = dataset.map(preprocess_image)
+    dataset = dataset.map(lambda image: {"image": image})
     iterator = dataset.make_one_shot_iterator()
     images = iterator.get_next()
     return images
 
 
 def CNN(inputs, mode):
+    inputs = inputs["image"]
     inputs = tf.reshape(inputs, [-1, 64, 64, 1])
     conv1 = tf.layers.conv2d(inputs=inputs, filters=32, kernel_size=[3, 3], padding='same', activation=tf.nn.relu)
     pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
@@ -107,7 +111,14 @@ def model_fn(features, labels, mode, params):
     }
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+        vals, indices = tf.nn.top_k(tf.nn.softmax(logits), k=5)
+        classes = tf.gather(all_chars, indices)
+        export_outputs = {"top5": tf.estimator.export.ClassificationOutput(classes=classes, scores=vals)}
+        return tf.estimator.EstimatorSpec(
+            mode=mode,
+            predictions=predictions,
+            export_outputs=export_outputs,
+        )
 
     loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
     tf.identity(loss, name='train_loss')
@@ -139,12 +150,14 @@ def model_fn(features, labels, mode, params):
 
 
 def main(_):
-    if not FLAGS.action or FLAGS.action not in ["train", "evaluate", "predict"]:
+    if not FLAGS.action or FLAGS.action not in ["train", "evaluate", "predict", "export"]:
         print("--action must be specified.")
         sys.exit(1)
-
     if FLAGS.action == 'predict' and (not FLAGS.input or not os.path.isfile(FLAGS.input)):
         print("--input must be specified.")
+        sys.exit(1)
+    if FLAGS.action == 'export' and not FLAGS.export_dir:
+        print("--export_dir must be specified.")
         sys.exit(1)
 
     num_epochs = 5
@@ -178,6 +191,10 @@ def main(_):
         for predict_results in classifier.predict(input_fn=lambda: predict_input_fn(FLAGS.input)):
             idx = predict_results['classes']
             print(struct.pack('<H', all_tagcodes[idx]).decode('gb2312'), predict_results['probabilities'][idx])
+    elif FLAGS.action == 'export':
+        feature_spec = {"image": tf.placeholder(tf.float32, [None, None])}
+        serving_input_receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_spec)
+        classifier.export_savedmodel(FLAGS.export_dir, serving_input_receiver_fn)
 
 
 if __name__ == '__main__':

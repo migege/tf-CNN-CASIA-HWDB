@@ -4,7 +4,7 @@
 #      Filename: sample_data.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-15 22:53:41
-# Last Modified: 2017-11-24 09:38:31
+# Last Modified: 2017-11-28 18:51:26
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -132,7 +132,7 @@ def get_all_tagcodes_from_charset_file(fn):
         chars = f.read().strip()
         for ch in chars:
             tagcode_all.append(unpack('<H', ch.encode('gb2312'))[0])
-        return tagcode_all
+        return tagcode_all, list(chars)
 
 
 def read_data_sets(gnt_bin, batch_size=50, normalize_image=True, tag_in=[], one_hot=True):
