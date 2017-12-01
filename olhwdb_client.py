@@ -4,7 +4,7 @@
 #      Filename: olhwdb_client.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-30 17:38:43
-# Last Modified: 2017-12-01 15:40:55
+# Last Modified: 2017-12-01 17:11:50
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -18,7 +18,6 @@ from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2
 from grpc.beta import implementations
 from PIL import Image
-import numpy as np
 from struct import pack, unpack
 
 IMAGE_WIDTH = 64
