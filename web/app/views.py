@@ -14,6 +14,7 @@ from flask import render_template, json, jsonify, request
 from PIL import Image, ImageFont, ImageDraw
 from struct import pack, unpack
 import base64
+import cStringIO
 
 from app import app
 
@@ -46,7 +47,9 @@ def create_image(char):
     fonts = ImageFont.truetype("./app/static/fonts/msyh.ttc", 36, encoding='utf-8')
     dr.text((15, 10), char, font=fonts, fill="#000000")
     del dr
-    return im.tobytes()
+    buff = cStringIO.StringIO()
+    im.save(buff, format="JPEG")
+    return buff.getvalue()
 
 
 @app.route('/')
