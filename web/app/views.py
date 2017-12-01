@@ -18,6 +18,8 @@ import base64
 from app import app
 
 __global_times = 0
+__test_image_file = "./app/image/test.png"
+
 IMAGE_WIDTH = 64
 IMAGE_HEIGHT = 64
 IMAGE_DEPTH = 1
@@ -76,8 +78,12 @@ def predict():
     images = tf.reshape(images, [-1])
     img = __sess.run(images)
     proto = tf.make_tensor_proto(values=img)
-    request.inputs["image"].CopyFrom(proto)
-    result = stub.Predict(request, 10.0)
+
+    req = predict_pb2.PredictRequest()
+    req.model_spec.name = "olhwdb"
+    req.model_spec.signature_name = "top5"
+    req.inputs["image"].CopyFrom(proto)
+    result = stub.Predict(req, 10.0)
     classes = result.outputs["classes"].int_val
     scores = result.outputs["scores"].float_val
     assert len(classes) == len(scores)
@@ -87,7 +93,8 @@ def predict():
             break
         char = pack('<H', cls).decode('gb2312')
         prob = scores[i]
-        img = base64.b64encode(create_image(char)).decode()
+        img = base64.b64encode(create_image(char))
         info['pred%s_image' % (i + 1)] = "data:image/jpg;base64," + img
-        info['pred%s_accuracy' % (i + 1)] = str('{:.2%}'.format(prob)
+        info['pred%s_accuracy' % (i + 1)] = str('{:.2%}'.format(prob))
+        # print(char, prob)
     return jsonify(info)

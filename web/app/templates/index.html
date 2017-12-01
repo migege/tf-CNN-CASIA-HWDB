@@ -56,7 +56,7 @@
     var customBoard = new DrawingBoard.Board('custom-board', {
       background: "#fff",
       color: "#121",
-      size: 18,
+      size: 6,
       controls: [{
           Navigation: {
             back: false,
@@ -100,6 +100,7 @@
           type: 'POST',
           data: data,
           success: function(msg) {
+            console.log(msg)
             document.getElementById('pred1_result').src = msg.pred1_image;
             document.getElementById('pred2_result').src = msg.pred2_image;
             document.getElementById('pred3_result').src = msg.pred3_image;
