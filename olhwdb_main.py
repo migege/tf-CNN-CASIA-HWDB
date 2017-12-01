@@ -4,7 +4,7 @@
 #      Filename: olhwdb.py
 #        Author: lzw.whu@gmail.com
 #       Created: 2017-11-24 16:14:52
-# Last Modified: 2017-11-28 18:51:19
+# Last Modified: 2017-12-01 15:20:57
 ###################################################
 from __future__ import absolute_import
 from __future__ import division
@@ -27,7 +27,7 @@ trn_bin = "/home/aib/datasets/OLHWDB1.1trn_pot.bin"
 tst_bin = "/home/aib/datasets/OLHWDB1.1tst_pot.bin"
 trn_charset = "/home/aib/datasets/OLHWDB1.1trn_pot.bin.charset"
 
-all_tagcodes, all_chars = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
+all_tagcodes, _ = sample_data.get_all_tagcodes_from_charset_file(trn_charset)
 num_classes = len(all_tagcodes)
 
 LABEL_BYTES = 2
@@ -112,8 +112,13 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         vals, indices = tf.nn.top_k(tf.nn.softmax(logits), k=5)
-        classes = tf.gather(all_chars, indices)
-        export_outputs = {"top5": tf.estimator.export.ClassificationOutput(classes=classes, scores=vals)}
+        classes = tf.gather(all_tagcodes, indices)
+        export_outputs = {
+            "top5": tf.estimator.export.PredictOutput(outputs={
+                "classes": classes,
+                "scores": vals,
+            }),
+        }
         return tf.estimator.EstimatorSpec(
             mode=mode,
             predictions=predictions,
@@ -168,7 +173,7 @@ def main(_):
     learning_rate = 1e-3
 
     run_config = tf.estimator.RunConfig().replace(save_checkpoints_steps=1e4)
-    classifier = tf.estimator.Estimator(
+    m = tf.estimator.Estimator(
         model_fn=model_fn,
         model_dir="/home/aib/models/tf-CNN-CASIA-OLHWDB/",
         config=run_config,
@@ -181,20 +186,29 @@ def main(_):
 
     if FLAGS.action == 'train':
         for _ in range(num_epochs // epochs_per_eval):
-            classifier.train(input_fn=lambda: input_fn(True, batch_size, num_epochs))
-            eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
+            m.train(input_fn=lambda: input_fn(True, batch_size, num_epochs))
+            eval_results = m.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
             print(eval_results)
     elif FLAGS.action == 'evaluate':
-        eval_results = classifier.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
+        eval_results = m.evaluate(input_fn=lambda: input_fn(False, batch_size_evaluate))
         print(eval_results)
     elif FLAGS.action == 'predict':
-        for predict_results in classifier.predict(input_fn=lambda: predict_input_fn(FLAGS.input)):
+        for predict_results in m.predict(input_fn=lambda: predict_input_fn(FLAGS.input)):
             idx = predict_results['classes']
             print(struct.pack('<H', all_tagcodes[idx]).decode('gb2312'), predict_results['probabilities'][idx])
     elif FLAGS.action == 'export':
         feature_spec = {"image": tf.placeholder(tf.float32, [None, None])}
         serving_input_receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_spec)
-        classifier.export_savedmodel(FLAGS.export_dir, serving_input_receiver_fn)
+        # serving_input_receiver = serving_input_receiver_fn()
+        # print(serving_input_receiver.receiver_tensors)
+        # classes = tf.constant(["hehe", "haha"])
+        # scores = tf.constant([0.9, 0.1])
+        # outputs = {"classes": classes, "scores": scores}
+        # export_output = tf.estimator.export.ClassificationOutput(classes=classes, scores=scores)
+        # export_output = tf.estimator.export.PredictOutput(outputs=outputs)
+        # sig_def = export_output.as_signature_def(serving_input_receiver.receiver_tensors)
+        # print(sig_def)
+        m.export_savedmodel(FLAGS.export_dir, serving_input_receiver_fn)
 
 
 if __name__ == '__main__':
