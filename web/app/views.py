@@ -13,13 +13,11 @@ from grpc.beta import implementations
 from flask import render_template, json, jsonify, request
 from PIL import Image, ImageFont, ImageDraw
 from struct import pack, unpack
+import numpy as np
 import base64
 import cStringIO
 
 from app import app
-
-__global_times = 0
-__test_image_file = "./app/image/test.png"
 
 IMAGE_WIDTH = 64
 IMAGE_HEIGHT = 64
@@ -29,15 +27,19 @@ channel = implementations.insecure_channel("127.0.0.1", 9000)
 stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
 
 
-def parse_image(fn):
-    image = tf.image.decode_image(tf.read_file(fn), channels=1)
-    image.set_shape([None, None, 1])
-    image = tf.image.resize_images(image, [IMAGE_HEIGHT, IMAGE_WIDTH])
-    return image
-
-
-def preprocess_image(image):
-    image = tf.image.per_image_standardization(image)
+def preprocess_image(img):
+    s = img.size
+    num_pixels = np.prod(s)
+    image = [float(ord(v)) for v in img.tobytes()]
+    image_mean = np.mean(image)
+    variance = np.mean(np.square(image)) - np.square(image_mean)
+    variance = np.maximum(variance, 0)
+    stddev = np.sqrt(variance)
+    min_stddev = np.reciprocal(np.sqrt(num_pixels))
+    pixel_value_scale = np.maximum(stddev, min_stddev)
+    pixel_value_offset = image_mean
+    image = np.subtract(image, pixel_value_offset)
+    image = np.divide(image, pixel_value_scale)
     return image
 
 
@@ -64,22 +66,12 @@ def predict():
     imagedata = data["test_image"]
     imagedata = imagedata[22:]
     img = base64.b64decode(imagedata)
-    with open(__test_image_file, 'wb') as f:
-        f.write(img)
 
-    global __global_times
-    if (__global_times == 0):
-        global __sess
-        __sess = tf.Session()
-        __global_times = 1
+    image = Image.open(cStringIO.StringIO(img)).convert('L')
+    if image.size != (IMAGE_WIDTH, IMAGE_HEIGHT):
+        image = image.resize((IMAGE_WIDTH, IMAGE_HEIGHT), Image.ANTIALIAS)
 
-    dataset = tf.data.Dataset.from_tensor_slices([tf.constant(__test_image_file)])
-    dataset = dataset.map(parse_image)
-    dataset = dataset.map(preprocess_image)
-    iterator = dataset.make_one_shot_iterator()
-    images = iterator.get_next()
-    images = tf.reshape(images, [-1])
-    img = __sess.run(images)
+    img = preprocess_image(image)
     proto = tf.make_tensor_proto(values=img)
 
     req = predict_pb2.PredictRequest()
